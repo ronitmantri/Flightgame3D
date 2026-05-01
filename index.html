@@ -413,6 +413,7 @@ const PLANE_CONFIGS = {
     mass: 1.0, minTakeoffSpeed: 60, stallSpeed: 45, maxSpeed: 500,
     thrustPower: 90, pitchRate: 1.2, rollRate: 2.0, yawRate: 0.6,
     dragCoeff: 0.06, autoStabilize: 1.5, scale: 1.4, engineType: "jet",
+    modelRotY: Math.PI,       // rotate so nose faces forward (+Z)
   },
   mig29: {
     name: "MiG-29", glb: "MiG-29.glb",
@@ -420,6 +421,7 @@ const PLANE_CONFIGS = {
     mass: 1.3, minTakeoffSpeed: 70, stallSpeed: 55, maxSpeed: 600,
     thrustPower: 110, pitchRate: 1.3, rollRate: 2.2, yawRate: 0.7,
     dragCoeff: 0.055, autoStabilize: 1.4, scale: 1.5, engineType: "jet",
+    modelRotY: Math.PI / 2,   // MiG-29 is 90° off — corrected here
   },
   flydubai: {
     name: "FlyDubai 737", glb: "FlyDubai.glb",
@@ -427,6 +429,7 @@ const PLANE_CONFIGS = {
     mass: 3.2, minTakeoffSpeed: 100, stallSpeed: 80, maxSpeed: 450,
     thrustPower: 160, pitchRate: 0.5, rollRate: 0.7, yawRate: 0.3,
     dragCoeff: 0.065, autoStabilize: 0.7, scale: 2.8, engineType: "jet",
+    modelRotY: Math.PI,
   },
 };
 
@@ -1062,63 +1065,45 @@ function buildAircraft() {
   planeGroup.position.set(0, 3.1, -500);
   STATE.scene.add(planeGroup);
   STATE.plane = planeGroup;
-
-  // Engine particle origin (used even before model loads)
   planeGroup.userData.engineOrigins = [ new THREE.Vector3(0, 0, -4) ];
 
-  // ---- Load f16.glb from same folder as this HTML file
   const loader = new GLTFLoader();
-  const modelUrl = cfg.glb; // filename from PLANE_CONFIGS
-
-  // Show loading indicator on HUD
-  const stallEl = document.getElementById('stallStatus');
-  stallEl.textContent = 'LOADING MODEL...';
-  stallEl.className = 'statusItem warn';
 
   loader.load(
-    modelUrl,
+    cfg.glb,
     (gltf) => {
-      // Success — add model to plane group
       const model = gltf.scene;
 
-      // Auto-scale: fit inside a ~10 unit bounding box
+      // 1. Add to scene first so world matrix is valid
+      planeGroup.add(model);
+
+      // 2. Auto-scale to fit targetSize units wingspan
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
       const targetSize = 8 * cfg.scale;
-      model.scale.setScalar(targetSize / maxDim);
+      const scaleFactor = targetSize / maxDim;
+      model.scale.setScalar(scaleFactor);
 
-      // Centre model on origin of group
+      // 3. Re-centre after scaling so model sits at group origin
       box.setFromObject(model);
       const centre = box.getCenter(new THREE.Vector3());
-      model.position.sub(centre);
+      model.position.set(-centre.x, -centre.y, -centre.z);
 
-      // F-16 nose points forward (+Z in our world), rotate if needed
-      model.rotation.y = Math.PI;
+      // 4. Per-plane rotation so nose always faces +Z
+      model.rotation.y = cfg.modelRotY !== undefined ? cfg.modelRotY : Math.PI;
 
-      planeGroup.add(model);
+      // 5. Update engine exhaust origin
+      planeGroup.userData.engineOrigins = [ new THREE.Vector3(0, 0, -(targetSize / 2)) ];
       planeGroup.userData.modelLoaded = true;
 
-      // Update engine origin to tail
-      planeGroup.userData.engineOrigins = [ new THREE.Vector3(0, 0, -(targetSize / 2)) ];
-
-      stallEl.textContent = 'NORMAL';
-      stallEl.className = 'statusItem off';
-      console.log('F-16 model loaded ✓');
+      console.log(cfg.name + ' loaded ✓  scale=' + scaleFactor.toFixed(3));
     },
-    (progress) => {
-      if (progress.total > 0) {
-        const pct = Math.round(progress.loaded / progress.total * 100);
-        stallEl.textContent = 'LOADING ' + pct + '%';
-      }
-    },
+    undefined, // no progress needed
     (err) => {
-      // Fallback: build a simple procedural jet so the game still works
-      console.warn('Could not load ' + cfg.glb + ' — using fallback model. Error:', err);
+      console.warn('Could not load ' + cfg.glb + ' — using fallback. Error:', err);
       buildFallbackJet(planeGroup, cfg);
       planeGroup.userData.engineOrigins = [ new THREE.Vector3(0, 0, -5 * cfg.scale) ];
-      stallEl.textContent = 'NORMAL';
-      stallEl.className = 'statusItem off';
     }
   );
 }
