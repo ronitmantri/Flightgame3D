@@ -428,7 +428,7 @@ const PLANE_CONFIGS = {
     color: 0xffffff, accent: 0xcc0000,
     mass: 3.2, minTakeoffSpeed: 100, stallSpeed: 80, maxSpeed: 450,
     thrustPower: 160, pitchRate: 0.5, rollRate: 0.7, yawRate: 0.3,
-    dragCoeff: 0.065, autoStabilize: 0.7, scale: 2.8, engineType: "jet",
+    dragCoeff: 0.065, autoStabilize: 0.7, scale: 28, engineType: "jet",
     modelRotY: Math.PI,
   },
 };
@@ -1074,10 +1074,13 @@ function buildAircraft() {
     (gltf) => {
       const model = gltf.scene;
 
-      // 1. Add to scene first so world matrix is valid
+      // 1. Apply rotation first so bounding box is measured in the right orientation
+      model.rotation.y = cfg.modelRotY !== undefined ? cfg.modelRotY : Math.PI;
+
+      // 2. Add to group so world matrices are valid
       planeGroup.add(model);
 
-      // 2. Auto-scale to fit targetSize units wingspan
+      // 3. Measure bounding box and scale to targetSize
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const maxDim = Math.max(size.x, size.y, size.z);
@@ -1085,13 +1088,10 @@ function buildAircraft() {
       const scaleFactor = targetSize / maxDim;
       model.scale.setScalar(scaleFactor);
 
-      // 3. Re-centre after scaling so model sits at group origin
+      // 4. Re-centre after scaling
       box.setFromObject(model);
       const centre = box.getCenter(new THREE.Vector3());
       model.position.set(-centre.x, -centre.y, -centre.z);
-
-      // 4. Per-plane rotation so nose always faces +Z
-      model.rotation.y = cfg.modelRotY !== undefined ? cfg.modelRotY : Math.PI;
 
       // 5. Update engine exhaust origin
       planeGroup.userData.engineOrigins = [ new THREE.Vector3(0, 0, -(targetSize / 2)) ];
@@ -1101,7 +1101,9 @@ function buildAircraft() {
     },
     undefined, // no progress needed
     (err) => {
-      console.warn('Could not load ' + cfg.glb + ' — using fallback. Error:', err);
+      console.error('❌ Failed to load: ' + cfg.glb);
+      console.error('Make sure the file is in the same folder as index.html');
+      console.error('GitHub Pages is case-sensitive — check capitalisation exactly matches');
       buildFallbackJet(planeGroup, cfg);
       planeGroup.userData.engineOrigins = [ new THREE.Vector3(0, 0, -5 * cfg.scale) ];
     }
