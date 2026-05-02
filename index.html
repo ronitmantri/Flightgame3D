@@ -1704,7 +1704,7 @@ function updatePhysics(dt) {
 
   // ---- TERRAIN COLLISION — sample height at current x,z
   const terrainH = getTerrainHeight(plane.position.x, plane.position.z);
-  const groundLevel = Math.max(3.1, terrainH + 3.5); // 3.5 clearance above terrain
+  const groundLevel = Math.max(1.5, terrainH + 3.5); // 3.5 clearance above terrain
 
   if (plane.position.y <= groundLevel) {
     // Hard impact: fast vertical speed or steep angle = crash
@@ -1750,7 +1750,7 @@ function crash(reason) {
 }
 
 function respawn() {
-  STATE.plane.position.set(0, 3.1, -500);
+  STATE.plane.position.set(0, 1.5, -500);
   STATE.plane.quaternion.identity();
   planeAngles.pitch = 0; planeAngles.yaw = 0; planeAngles.roll = 0;
   STATE.velocity.set(0, 0, 0);
