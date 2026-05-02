@@ -652,44 +652,14 @@ function buildTerrain() {
 
   const pos = geo.attributes.position;
   const colors = [];
-  const baseColor = new THREE.Color(0x3d6e3a);
-  const sandColor = new THREE.Color(0xc9b97a);
-  const rockColor = new THREE.Color(0x6e6055);
-  const snowColor = new THREE.Color(0xeef3f8);
+  const grassColor = new THREE.Color(0x3d6e3a); // green grass
 
+  // Flat terrain - no height variations
   for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i);
-    const y = pos.getY(i);
-    const dist = Math.sqrt(x*x + y*y);
-
-    // base mountain noise via sin/cos layers
-    let h = 0;
-    h += Math.sin(x * 0.0008) * Math.cos(y * 0.0008) * 600;
-    h += Math.sin(x * 0.0021 + 1.3) * Math.cos(y * 0.0017 - 0.5) * 280;
-    h += Math.sin(x * 0.0055) * Math.cos(y * 0.005) * 80;
-    h += Math.sin(x * 0.012 + y * 0.009) * 30;
-
-    // Push high mountains away from main hub
-    const mountainFactor = THREE.MathUtils.smoothstep(dist, 3500, 9000);
-    h *= mountainFactor;
-
-    // Flatten around origin (radius 2000) — main hub
-    const flatten = THREE.MathUtils.smoothstep(dist, 0, 2200);
-    h *= flatten;
-
-    // Slightly dip near coastlines so we get islands
-    if (h < 0) h = -h * 0.2;
-
-    pos.setZ(i, h);
-
-    // colorize
-    const c = new THREE.Color();
-    if (h > 700) c.lerpColors(rockColor, snowColor, Math.min(1, (h-700)/400));
-    else if (h > 200) c.lerpColors(baseColor, rockColor, Math.min(1, (h-200)/500));
-    else if (h < 5)   c.lerpColors(sandColor, baseColor, Math.min(1, h/5));
-    else              c.copy(baseColor).offsetHSL(0, 0, (Math.sin(x*0.01)+Math.cos(y*0.01))*0.02);
-    colors.push(c.r, c.g, c.b);
+    pos.setZ(i, 0); // perfectly flat
+    colors.push(grassColor.r, grassColor.g, grassColor.b);
   }
+  
   geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   geo.computeVertexNormals();
 
@@ -1580,21 +1550,10 @@ function cycleCamera() {
 }
 
 /* ============================================================
-   TERRAIN HEIGHT — same formula as buildTerrain so collisions match visuals
+   TERRAIN HEIGHT — flat terrain now (mountains will be 3D models)
 ============================================================ */
 function getTerrainHeight(x, z) {
-  const dist = Math.sqrt(x * x + z * z);
-  let h = 0;
-  h += Math.sin(x * 0.0008) * Math.cos(z * 0.0008) * 600;
-  h += Math.sin(x * 0.0021 + 1.3) * Math.cos(z * 0.0017 - 0.5) * 280;
-  h += Math.sin(x * 0.0055) * Math.cos(z * 0.005) * 80;
-  h += Math.sin(x * 0.012 + z * 0.009) * 30;
-  const mountainFactor = THREE.MathUtils.smoothstep(dist, 3500, 9000);
-  h *= mountainFactor;
-  const flatten = THREE.MathUtils.smoothstep(dist, 0, 2200);
-  h *= flatten;
-  if (h < 0) h = -h * 0.2;
-  return h;
+  return 0; // perfectly flat
 }
 
 /* ============================================================
