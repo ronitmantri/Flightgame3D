@@ -801,28 +801,32 @@ function buildCity() {
     'uploads_files_6376639_Cartoon_City_Free.glb',
     (gltf) => {
       const cityTemplate = gltf.scene;
+      const cityScale = 10; // 10x bigger
+      const numCities = 16; // cities arranged in a circle
+      const radiusToCenter = 4000; // distance from airport to city ring center
 
-      // Create a huge city grid: 5x5 = 25 city blocks
-      const gridSize = 5;
-      const spacing = 2000; // space between each city block
+      for (let i = 0; i < numCities; i++) {
+        const angle = (i / numCities) * Math.PI * 2;
+        
+        // Position in circular arrangement
+        const x = Math.cos(angle) * radiusToCenter;
+        const z = Math.sin(angle) * radiusToCenter;
 
-      for (let gx = 0; gx < gridSize; gx++) {
-        for (let gz = 0; gz < gridSize; gz++) {
-          const cityBlock = cityTemplate.clone();
-          const x = (gx - gridSize / 2) * spacing;
-          const z = (gz - gridSize / 2) * spacing;
-          cityBlock.position.set(x, 0, z);
-          cityGroup.add(cityBlock);
+        const cityBlock = cityTemplate.clone();
+        cityBlock.scale.set(cityScale, cityScale, cityScale);
+        cityBlock.position.set(x, 0, z);
+        cityBlock.rotation.y = angle; // rotate to face outward
+        cityGroup.add(cityBlock);
 
-          // Estimate collision bounds for city block (simplified)
-          STATE.buildings.push({
-            min: new THREE.Vector3(x - 800, 0, z - 800),
-            max: new THREE.Vector3(x + 800, 200, z + 800),
-          });
-        }
+        // Scaled collision bounds for city block
+        const collisionSize = 800 * cityScale;
+        STATE.buildings.push({
+          min: new THREE.Vector3(x - collisionSize, 0, z - collisionSize),
+          max: new THREE.Vector3(x + collisionSize, 200 * cityScale, z + collisionSize),
+        });
       }
 
-      console.log('Cartoon city loaded: ' + (gridSize * gridSize) + ' blocks ✓');
+      console.log('Cartoon city ring loaded: ' + numCities + ' blocks (10x scale) ✓');
     },
     undefined,
     (err) => {
@@ -834,6 +838,10 @@ function buildCity() {
 
   STATE.scene.add(cityGroup);
 }
+
+/* ============================================================
+   RUNWAYS
+============================================================ */
 
 /* ============================================================
    RUNWAYS
