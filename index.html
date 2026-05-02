@@ -454,6 +454,7 @@ const STATE = {
   crashed: false,
   // collisions
   buildings: [],
+  spawnTime: 0,
   // particles
   particles: [],
   // audio
@@ -564,6 +565,7 @@ function initSimulation() {
     loading.classList.add('hidden');
     loading.classList.remove('show');
   }, 250);
+  STATE.spawnTime = STATE.clock.getElapsedTime();
   animate();
 }
 
@@ -1713,12 +1715,15 @@ function updatePhysics(dt) {
   // ---- Ocean crash
   if (plane.position.y < -20) return crash("DITCHED INTO OCEAN");
 
-  // ---- Building collision
-  for (const b of STATE.buildings) {
-    const p = plane.position;
-    if (p.x > b.min.x && p.x < b.max.x &&
-        p.z > b.min.z && p.z < b.max.z &&
-        p.y > b.min.y && p.y < b.max.y) return crash("STRUCTURE COLLISION");
+  // ---- Building collision (with grace period after spawn)
+  const timeSinceSpawn = STATE.clock.getElapsedTime() - STATE.spawnTime;
+  if (timeSinceSpawn > 3.0) { // 3 second grace period
+    for (const b of STATE.buildings) {
+      const p = plane.position;
+      if (p.x > b.min.x && p.x < b.max.x &&
+          p.z > b.min.z && p.z < b.max.z &&
+          p.y > b.min.y && p.y < b.max.y) return crash("STRUCTURE COLLISION");
+    }
   }
 
   // ---- HUD stall badge
@@ -1745,6 +1750,7 @@ function respawn() {
   STATE.velocity.set(0, 0, 0);
   STATE.throttle = 0;
   STATE.gearDown = true;
+  STATE.spawnTime = STATE.clock.getElapsedTime();
   if (STATE.plane.userData.gear) STATE.plane.userData.gear.visible = true;
   STATE.crashed = false;
   document.getElementById('crashOverlay').classList.remove('active');
